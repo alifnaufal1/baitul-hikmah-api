@@ -1,19 +1,41 @@
 package routes
 
-// import (
-// 	"net/http"
+import (
+	"blog-api/controller"
+	"blog-api/utils"
+	"net/http"
+)
 
-// )
+func IndexRoute(w http.ResponseWriter, r *http.Request)  {
+	if r.Method != "GET" {
+		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
+    	return
+	}
+	w.Write([]byte("Hello World"))
+}
 
-// func Routes() *echo.Echo {
-// 	e := echo.New()
+func PostRoute(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		controller.PostGetController(w, r);
+	case "POST":
+		controller.PostCreateController(w, r);
+	case "PUT":
+		controller.PostUpdateController(w, r);
+	case "DELETE":
+		controller.PostDeleteController(w, r);
+	}
+}
 
-//   e.GET("/", func(c echo.Context) error {
-// 		return c.String(http.StatusOK, "Blog App")
-// 	})
-
-//   // post
-//   // e.POST("/posts", ) 
-
-//   return e
-// }
+func CategoryRoute(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		controller.CategoryGetAllController(w, r);
+	case "POST":
+		controller.CategoryCreateController(w, r);
+	case "PUT":
+		controller.CategoryUpdateController(w, r);
+	case "DELETE":
+		controller.CategoryDeleteController(w, r);
+	}
+}

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"blog-api/controller"
 	"blog-api/db"
 	m "blog-api/middleware"
+	"blog-api/routes"
 	"fmt"
 	"net/http"
 )
@@ -12,32 +12,10 @@ func main() {
 	db.ConnectDB()
 	mux := new(m.CustomMux)
 	
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != "GET" {
-			http.Error(w, "invalid request", http.StatusBadRequest)
-			return
-		}
-
-		w.Write([]byte("Hello World"))
-	})
-
-	// post
-	mux.HandleFunc("/post", controller.CreatePostController)
+	mux.HandleFunc("/", routes.IndexRoute)
+	mux.HandleFunc("/posts", routes.PostRoute)
+	mux.HandleFunc("/categories", routes.CategoryRoute)
 	
-	// category
-	mux.HandleFunc("/categories", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case "GET":
-			controller.GetAllCategoryController(w, r);
-		case "POST":
-			controller.CreateCategoryController(w, r);
-		case "PUT":
-			controller.UpdateCategoryController(w, r);
-		case "DELETE":
-			controller.DeleteCategoryController(w, r);
-		}
-	})
-
 	// midlleware
 	mux.RegisterMiddleware(m.Auth)
 

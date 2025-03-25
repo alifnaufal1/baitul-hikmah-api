@@ -31,3 +31,7 @@ func ConnectDB() {
 
   fmt.Println("success connect to db")
 }
+
+// migrate:
+// migrate create -ext sql -dir db/migrations {nama-migrate}
+// migrate -database "postgres://postgres:{pw}@localhost:5432/free-market-test?sslmode=disable" -path db/migrations up

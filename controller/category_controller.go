@@ -4,22 +4,19 @@ import (
 	"blog-api/repo"
 	"blog-api/types"
 	"blog-api/utils"
-	"encoding/json"
+	"database/sql"
 	"net/http"
 	"strconv"
 )
 
-func CreateCategoryController(w http.ResponseWriter, r *http.Request) {
+func CategoryCreateController(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
     utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
     return
 	}
   
   var category types.Category
-  if err := json.NewDecoder(r.Body).Decode(&category); err != nil {
-    utils.HandleAnyError("error decoding request body"+err.Error(), w, http.StatusBadRequest)
-    return  
-  }
+  if err := utils.DecodeFromRequest(r.Body, &category, w); err != nil {return}
   
   if category.Name == "" {
     utils.HandleAnyError("category name is required", w, http.StatusBadRequest)
@@ -28,23 +25,14 @@ func CreateCategoryController(w http.ResponseWriter, r *http.Request) {
   
   createdCategory, err := repo.CreateCategory(category)
   if err != nil {
-    utils.HandleAnyError("error saving category -> "+err.Error(), w, http.StatusInternalServerError)
+    utils.HandleAnyError("error saving category -> "+ err.Error(), w, http.StatusInternalServerError)
     return  
   }
   
-  response := types.APIResponse{
-    Code: 201,
-    Results: types.Result{
-      Message: "success create category",
-      Data: createdCategory,
-    },
-    Status: "success",
-  }
-  
-  utils.JSONTemplate(w, 201, response)
+  utils.SuccessResponse(w, 201, createdCategory, "success create category")
 }
 
-func GetAllCategoryController(w http.ResponseWriter, r *http.Request) {
+func CategoryGetAllController(w http.ResponseWriter, r *http.Request) {
   if r.Method != "GET" {
     utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
     return
@@ -52,78 +40,74 @@ func GetAllCategoryController(w http.ResponseWriter, r *http.Request) {
   
   categories, err := repo.GetAllCategory()
   if err != nil {
-    utils.HandleAnyError("error get all category -> "+err.Error(), w, http.StatusInternalServerError)
+    utils.HandleAnyError("error get all category -> " + err.Error(), w, http.StatusInternalServerError)
     return  
   }
-  
-  response := types.APIResponse{
-    Code: 201,
-    Results: types.Result{
-      Message: "success get all category",
-      Data: categories,
-    },
-    Status: "success",
+  if len(categories) == 0 {
+    utils.HandleDataNotFound("categories is empty", w)
+    return
   }
-  
-  utils.JSONTemplate(w, 200, response)
+
+  utils.SuccessResponse(w, 200, categories, "success fetch categories")
 }
   
-func UpdateCategoryController(w http.ResponseWriter, r *http.Request)  {
+func CategoryUpdateController(w http.ResponseWriter, r *http.Request)  {
   if r.Method != "PUT" {
     utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
     return
   }
   
   var category types.Category
-  if err := json.NewDecoder(r.Body).Decode(&category); err != nil {
-    utils.HandleAnyError("error decoding request body"+err.Error(), w, http.StatusBadRequest)
-    return  
+  if err := utils.DecodeFromRequest(r.Body, &category, w); err != nil {return}
+
+  strId := r.URL.Query().Get("id")
+  if strId == "" {
+    utils.HandleAnyError("missing parameter", w, http.StatusBadRequest)
+    return
   }
+
+  id, _ := strconv.Atoi(strId)
   
   if category.Name == "" {
     utils.HandleAnyError("category name is required", w, http.StatusBadRequest)
     return  
   }
   
-  updatedCategory, err := repo.UpdateCategory(category)
+  updatedCategory, err := repo.UpdateCategory(id, category)
   if err != nil {
+    if err == sql.ErrNoRows {
+      utils.HandleDataNotFound("this category not found", w)
+      return
+    }
     utils.HandleAnyError("error update category -> " + err.Error(), w, http.StatusInternalServerError)
-    return  
+    return
   }
 
-  response := types.APIResponse{
-    Code: 200,
-    Results: types.Result{
-      Message: "success update category",
-      Data: updatedCategory,
-    },
-    Status: "success",
-  }
-  
-  utils.JSONTemplate(w, 200, response)
+  utils.SuccessResponse(w, 201, updatedCategory, "success update category")
 }
 
-func DeleteCategoryController(w http.ResponseWriter, r *http.Request)  {
+func CategoryDeleteController(w http.ResponseWriter, r *http.Request)  {
   if r.Method != "DELETE" {
     utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
     return
   }
+  
+  strId := r.URL.Query().Get("id")
+  if strId == "" {
+    utils.HandleAnyError("missing parameter", w, http.StatusBadRequest)
+    return
+  }
 
-  id, _ := strconv.Atoi(r.URL.Query().Get("id"))
+  id, _ := strconv.Atoi(strId)
   
   if err := repo.DeleteCategory(id); err != nil {
+    if err == sql.ErrNoRows {
+      utils.HandleDataNotFound("this category not found", w)
+      return
+    }
     utils.HandleAnyError("error delete category -> " + err.Error(), w, http.StatusInternalServerError)
     return  
   }
 
-  response := types.APIResponse{
-    Code: 200,
-    Results: types.Result{
-      Message: "success delete category",
-      Data: nil,
-    },
-    Status: "success",
-  }
-  
-  utils.JSONTemplate(w, 200, response)
+  utils.SuccessResponse(w, 201, nil, "success delete category")
 }

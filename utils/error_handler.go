@@ -6,6 +6,11 @@ import (
 	"net/http"
 )
 
+func HandleDataNotFound(message string, w http.ResponseWriter) {
+	if message == "" {message = "data not found"}
+	HandleAnyError(message, w, http.StatusNotFound)
+}
+
 func HandleAnyError(message string, w http.ResponseWriter, statusCode int) {
 	var response types.APIResponse
 

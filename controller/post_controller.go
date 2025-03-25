@@ -4,46 +4,134 @@ import (
 	"blog-api/repo"
 	"blog-api/types"
 	"blog-api/utils"
-	"encoding/json"
+	"database/sql"
+	"errors"
 	"net/http"
+	"strconv"
 )
 
-func CreatePostController(w http.ResponseWriter, r *http.Request) {
+func PostCreateController(w http.ResponseWriter, r *http.Request) {
   if r.Method != "POST" {
     utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
     return
   }
   
-  var payload types.Post
-  if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-    utils.HandleAnyError("error decoding request body: "+err.Error(), w, http.StatusBadRequest)
-    return  
-  }
-  
-  createdPost, err := repo.CreatePost(payload)
+  var post types.Post
+  if err := utils.DecodeFromRequest(r.Body, &post, w); err != nil {return}
+
+  createdPost, err := repo.CreatePost(post)
   if err != nil {
-    utils.HandleAnyError("error saving post: "+err.Error(), w, http.StatusInternalServerError)
+    if err == sql.ErrNoRows {
+      utils.HandleDataNotFound("this category not found", w)
+      return
+    }
+    utils.HandleAnyError("error saving post -> "+err.Error(), w, http.StatusInternalServerError)
     return 
   }
 
-  response := types.APIResponse {
-    Code: 201,
-    Results: types.Result{
-      Data: createdPost,
-      Message: "success create post",
-    },
-    Status: "success",
-  }
-  
-  utils.JSONTemplate(w, 201, response)
+  utils.SuccessResponse(w, 201, createdPost, "success create post")
 }
 
-// func GetAllPostController(w http.ResponseWriter, r *http.Request) {
-//   if r.Method != "POST" {
-//     utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
-//     return
-//   } 
+func PostGetController(w http.ResponseWriter, r *http.Request)  {
+  if r.Method != "GET" {
+    utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
+    return
+  }
 
-//   var payload types.Post
+  if strId := r.URL.Query().Get("id"); strId != "" {
+    id, _ := strconv.Atoi(strId)
+    post, err := repo.GetPostById(id)
+    if err != nil {
+      if err == sql.ErrNoRows {
+        utils.HandleDataNotFound("this post not found", w)
+        return
+      }
+      utils.HandleAnyError("error get post -> " + err.Error(), w, http.StatusInternalServerError)
+      return
+    }
 
-// }
+    utils.SuccessResponse(w, 200, post, "success fetch post")
+  } else {
+      posts, err := repo.GetAllPost()
+      if err != nil {
+        if err == sql.ErrNoRows {
+          utils.HandleAnyError("posts not found", w, http.StatusNotFound)
+          return
+        }
+      utils.HandleAnyError("error get all post ->" + err.Error(), w, http.StatusInternalServerError)
+      return
+    }
+    utils.SuccessResponse(w, 200, posts, "success fetch all post")
+  }  
+}
+
+func PostUpdateController(w http.ResponseWriter, r *http.Request)  {
+  if r.Method != "PUT" {
+    utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
+    return
+  }
+
+  var post types.Post
+  if err := utils.DecodeFromRequest(r.Body, &post, w); err != nil {return}
+
+  strId := r.URL.Query().Get("id")
+  if strId == "" {
+    utils.HandleAnyError("missing parameter", w, http.StatusBadRequest)
+    return
+  }
+
+  id, _ := strconv.Atoi(strId)
+
+  if post.Title == "" {
+    utils.HandleAnyError("post title is required", w, http.StatusBadRequest)
+    return  
+  }
+
+  if post.Content == "" {
+    utils.HandleAnyError("post content is required", w, http.StatusBadRequest)
+    return  
+  }
+
+  updatedPost, err := repo.UpdatePost(id, post)
+  if err != nil {
+    if errors.Is(err, sql.ErrNoRows) {
+      utils.HandleDataNotFound("this post not found", w)
+      return
+    }
+    if errors.Is(err, utils.ErrCategoryNotFound) {
+      utils.HandleDataNotFound("category specified not found", w)
+      return
+    }
+    utils.HandleAnyError("error update post -> " + err.Error(), w, http.StatusInternalServerError)
+    return  
+  }
+
+  utils.SuccessResponse(w, 201, updatedPost, "success update post")
+}
+
+func PostDeleteController(w http.ResponseWriter, r *http.Request)  {
+  if r.Method != "DELETE" {
+    utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
+    return
+  }
+
+  strId := r.URL.Query().Get("id")
+  if strId == "" {
+    utils.HandleAnyError("missing parameter", w, http.StatusBadRequest)
+    return
+  }
+
+  id, _ := strconv.Atoi(strId)
+
+  err := repo.DeletePost(id)
+  if err != nil {
+    if err == sql.ErrNoRows {
+      utils.HandleDataNotFound("this post not found", w)
+      return
+    }
+    utils.HandleAnyError("error delete post -> " + err.Error(), w, http.StatusInternalServerError)
+    return  
+  }
+
+  utils.SuccessResponse(w, 200, nil, "success delete post")
+}
