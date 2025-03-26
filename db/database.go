@@ -34,4 +34,4 @@ func ConnectDB() {
 
 // migrate:
 // migrate create -ext sql -dir db/migrations {nama-migrate}
-// migrate -database "postgres://postgres:{pw}@localhost:5432/free-market-test?sslmode=disable" -path db/migrations up
+// migrate -database "postgres://postgres:Mantablah1@localhost:5432/blog_db?sslmode=disable" -path db/migrations up

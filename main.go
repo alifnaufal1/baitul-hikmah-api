@@ -18,6 +18,7 @@ func main() {
 	
 	// midlleware
 	mux.RegisterMiddleware(m.Auth)
+	mux.RegisterMiddleware(m.CorsMiddleware)
 
 	server := new(http.Server)
 	server.Addr = ":90"
