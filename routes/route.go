@@ -14,6 +14,24 @@ func IndexRoute(w http.ResponseWriter, r *http.Request)  {
 	w.Write([]byte("Hello World"))
 }
 
+func RegisterHandler(w http.ResponseWriter, r *http.Request)  {
+	switch r.Method {
+	case "POST":
+		controller.UserRegisterController(w, r)
+	default:
+		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
+	}
+}
+
+func LoginHandler(w http.ResponseWriter, r *http.Request)  {
+	switch r.Method {
+	case "POST":
+		controller.UserLoginController(w, r)
+	default:
+		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
+	}
+}
+
 func PostRoute(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
@@ -24,6 +42,8 @@ func PostRoute(w http.ResponseWriter, r *http.Request) {
 		controller.PostUpdateController(w, r);
 	case "DELETE":
 		controller.PostDeleteController(w, r);
+	default:
+		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
 	}
 }
 
@@ -36,6 +56,8 @@ func CategoryRoute(w http.ResponseWriter, r *http.Request) {
 	case "PUT":
 		controller.CategoryUpdateController(w, r);
 	case "DELETE":
-		controller.CategoryDeleteController(w, r);
+		controller.CategoryDeleteController(w, r);	
+	default:
+		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
 	}
 }

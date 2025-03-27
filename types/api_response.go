@@ -2,7 +2,7 @@ package types
 
 type APIResponse struct {
 	Code    int    `json:"code"`
-	Results Result `json:"results"`
+	Results any    `json:"results"`
 	Status  string `json:"status"`
 }
 
@@ -10,4 +10,9 @@ type Result struct {
 	Error   string      `json:"error"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data"`
+}
+
+type LoginResult struct {
+	Message string      `json:"message"`
+	Token   interface{} `json:"token"`
 }

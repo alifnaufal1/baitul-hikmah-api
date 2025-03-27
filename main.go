@@ -13,12 +13,16 @@ func main() {
 	mux := new(m.CustomMux)
 	
 	mux.HandleFunc("/", routes.IndexRoute)
+	mux.HandleFunc("/register", routes.RegisterHandler)
+	mux.HandleFunc("/login", routes.LoginHandler)
+	
 	mux.HandleFunc("/posts", routes.PostRoute)
 	mux.HandleFunc("/categories", routes.CategoryRoute)
 	
 	// midlleware
-	mux.RegisterMiddleware(m.Auth)
 	mux.RegisterMiddleware(m.CorsMiddleware)
+	mux.RegisterMiddleware(m.Auth)
+	
 
 	server := new(http.Server)
 	server.Addr = ":90"
