@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"blog-api/utils"
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -15,6 +16,10 @@ type CustomMux struct {
 	http.ServeMux
 	middlewares []func(next http.Handler) http.Handler
 }
+
+type contextKey string
+
+const RoleKey contextKey = "role"
 
 var SECRET_KEY = []byte("my_scret_key")
 
@@ -32,9 +37,10 @@ func (c *CustomMux) ServeHTTP(w http.ResponseWriter, r *http.Request)  {
 	current.ServeHTTP(w, r)
 }
 
-func GenerateToken(userId int) (string, error) {
+func GenerateToken(userId int, role string) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userId,
+		"role": role,
 		"exp": time.Now().Add(time.Hour * 24).Unix(),
 		"iat": time.Now().Unix(),
 	}
@@ -83,7 +89,10 @@ func Auth(next http.Handler) http.Handler {
 		return
 	}
 	
-    next.ServeHTTP(w, r)
+	role := claims["role"].(string)
+	ctx := context.WithValue(r.Context(), RoleKey, role)
+	
+    next.ServeHTTP(w, r.WithContext(ctx))
   })
 }
 
@@ -97,7 +106,18 @@ func CorsMiddleware(next http.Handler) http.Handler {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
+		
+		next.ServeHTTP(w, r)
+	})
+}
 
+func AdminOnly(next http.Handler) http.Handler {
+	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request)  {
+		role, ok := r.Context().Value(RoleKey).(string)
+		if !ok || role != "admin" {
+			utils.HandleAnyError("access denied, admin only", w, 403)
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }

@@ -47,7 +47,7 @@ func PostRoute(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CategoryRoute(w http.ResponseWriter, r *http.Request) {
+func CategoryProtectedRoute(w http.ResponseWriter, r *http.Request)  {
 	switch r.Method {
 	case "GET":
 		controller.CategoryGetAllController(w, r);
@@ -59,5 +59,13 @@ func CategoryRoute(w http.ResponseWriter, r *http.Request) {
 		controller.CategoryDeleteController(w, r);	
 	default:
 		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
-	}
+	}	
+}
+
+func CategoryPublicRoute(w http.ResponseWriter, r *http.Request) {
+	if r.Method == "GET" {
+		controller.CategoryGetAllController(w, r);
+	} else {
+		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
+	} 
 }

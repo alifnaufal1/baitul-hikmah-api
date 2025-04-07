@@ -17,13 +17,15 @@ func main() {
 	mux.HandleFunc("/login", routes.LoginHandler)
 	
 	mux.HandleFunc("/posts", routes.PostRoute)
-	mux.HandleFunc("/categories", routes.CategoryRoute)
-	
+	mux.HandleFunc("/categories", routes.CategoryPublicRoute)
+
+	protectedCategoryHandler := m.Auth(m.AdminOnly(http.HandlerFunc(routes.CategoryProtectedRoute)))
+	mux.Handle("/categories/manage", protectedCategoryHandler)
+
 	// midlleware
 	mux.RegisterMiddleware(m.CorsMiddleware)
 	mux.RegisterMiddleware(m.Auth)
 	
-
 	server := new(http.Server)
 	server.Addr = ":90"
 	server.Handler = mux

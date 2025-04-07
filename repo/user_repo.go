@@ -12,9 +12,9 @@ func CreateUser(username string, hashPassword string) (types.RegisterResponse, e
     var createdAt string
 
     err := conn.QueryRow(`
-    INSERT INTO users (username, password, is_admin)
+    INSERT INTO users (username, password, role)
     VALUES ($1, $2, $3)
-    RETURNING id, created_at`, username, hashPassword, false).Scan(&id, &createdAt)
+    RETURNING id, created_at`, username, hashPassword, "user").Scan(&id, &createdAt)
     if err != nil {return types.RegisterResponse{}, err}
 
     registerResponse := types.RegisterResponse{
@@ -31,10 +31,10 @@ func GetUserByUsername(username string) (types.User, error) {
 
     var user types.User
     err := conn.QueryRow(`
-    SELECT id, username, password, is_admin
+    SELECT id, username, password, role
     FROM users
     WHERE username = $1`, 
-    username).Scan(&user.ID, &user.Username, &user.Password, &user.IsAdmin)
+    username).Scan(&user.ID, &user.Username, &user.Password, &user.Role)
     if err != nil {return types.User{}, err}
 
     return user, nil

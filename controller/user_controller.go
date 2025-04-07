@@ -23,6 +23,7 @@ func UserRegisterController(w http.ResponseWriter, r *http.Request) {
 	
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(user.Password), 8)
 	
+	
 	registeredUser, err := repo.CreateUser(user.Username, string(hashedPassword))
 	if err != nil {
 		utils.HandleAnyError("error registration -> " + err.Error(), w, http.StatusInternalServerError)
@@ -52,8 +53,9 @@ func UserLoginController(w http.ResponseWriter, r *http.Request)  {
 		utils.HandleAnyError("invalid credentials", w, http.StatusUnauthorized)
 		return
 	}
+
 	
-	generatedToken, err := middleware.GenerateToken(dbUser.ID)
+	generatedToken, err := middleware.GenerateToken(dbUser.ID, dbUser.Role)
 	if err != nil {
 		utils.HandleAnyError("error generating token -> " + err.Error(), w, http.StatusInternalServerError)
 		return
