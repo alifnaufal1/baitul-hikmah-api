@@ -11,11 +11,6 @@ import (
 )
 
 func PostCreateController(w http.ResponseWriter, r *http.Request) {
-  if r.Method != "POST" {
-    utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
-    return
-  }
-  
   var post types.Post
   if err := utils.DecodeFromRequest(r.Body, &post, w); err != nil {return}
 
@@ -33,12 +28,10 @@ func PostCreateController(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostGetController(w http.ResponseWriter, r *http.Request)  {
-  if r.Method != "GET" {
-    utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
-    return
-  }
+  strId := r.URL.Query().Get("id")
+  strCategoryId := r.URL.Query().Get("category_id")
 
-  if strId := r.URL.Query().Get("id"); strId != "" {
+  if strId != "" {
     id, _ := strconv.Atoi(strId)
     post, err := repo.GetPostById(id)
     if err != nil {
@@ -52,7 +45,8 @@ func PostGetController(w http.ResponseWriter, r *http.Request)  {
 
     utils.SuccessResponse(w, 200, post, "success fetch post")
   } else {
-      posts, err := repo.GetAllPost()
+      categoryId, _ := strconv.Atoi(strCategoryId)
+      posts, err := repo.GetAllPost(categoryId)
       if err != nil {
         if err == sql.ErrNoRows {
           utils.HandleAnyError("posts not found", w, http.StatusNotFound)
@@ -66,11 +60,6 @@ func PostGetController(w http.ResponseWriter, r *http.Request)  {
 }
 
 func PostUpdateController(w http.ResponseWriter, r *http.Request)  {
-  if r.Method != "PUT" {
-    utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
-    return
-  }
-
   var post types.Post
   if err := utils.DecodeFromRequest(r.Body, &post, w); err != nil {return}
 
@@ -110,11 +99,6 @@ func PostUpdateController(w http.ResponseWriter, r *http.Request)  {
 }
 
 func PostDeleteController(w http.ResponseWriter, r *http.Request)  {
-  if r.Method != "DELETE" {
-    utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
-    return
-  }
-
   strId := r.URL.Query().Get("id")
   if strId == "" {
     utils.HandleAnyError("missing parameter", w, http.StatusBadRequest)

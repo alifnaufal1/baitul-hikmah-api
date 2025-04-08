@@ -4,6 +4,7 @@ import (
 	"blog-api/db"
 	"blog-api/types"
 	"blog-api/utils"
+	"database/sql"
 )
 
 func CreatePost(post types.Post) (types.PostResponse, error) {
@@ -34,13 +35,23 @@ func CreatePost(post types.Post) (types.PostResponse, error) {
 	return postResponse, nil
 }
 
-func GetAllPost() ([]types.PostResponse, error) {
+func GetAllPost(categoryId int) ([]types.PostResponse, error) {
 	conn := db.DB
+	var rows *sql.Rows
+	var err error
 
-	rows, err := conn.Query(`
-	SELECT id, title, content, category_id, created_at
-	FROM posts 
-	WHERE deleted_at IS NULL`)
+	if categoryId != 0 {
+		rows, err = conn.Query(`
+		SELECT id, title, content, category_id, created_at
+		FROM posts 
+		WHERE deleted_at IS NULL AND category_id = $1`, categoryId)
+	} else {
+		rows, err = conn.Query(`
+		SELECT id, title, content, category_id, created_at
+		FROM posts 
+		WHERE deleted_at IS NULL`)
+	}
+
 	if err != nil {return []types.PostResponse{}, err}
 	defer rows.Close()
 
@@ -54,6 +65,7 @@ func GetAllPost() ([]types.PostResponse, error) {
 	}
 	
 	if err = rows.Err(); err != nil {return []types.PostResponse{}, err}
+	if len(posts) == 0 {return nil, sql.ErrNoRows}
 	return posts, nil
 }
 
