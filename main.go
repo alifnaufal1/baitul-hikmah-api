@@ -28,7 +28,7 @@ func main() {
 	
 	server := new(http.Server)
 	server.Addr = ":90"
-	server.Handler = mux
+	server.Handler = m.CorsMiddleware(mux)
 
 	fmt.Println("starting server at localhost:90")
 	server.ListenAndServe()
