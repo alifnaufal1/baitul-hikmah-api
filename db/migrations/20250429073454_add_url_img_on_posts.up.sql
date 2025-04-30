@@ -1,0 +1,1 @@
+ALTER TABLE posts ADD COLUMN url_post_img VARCHAR(255) NULL;

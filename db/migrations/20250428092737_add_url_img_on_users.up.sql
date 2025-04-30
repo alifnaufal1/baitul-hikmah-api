@@ -1,0 +1,1 @@
+ALTER TABLE users ADD COLUMN url_profile_img VARCHAR(255) NULL;

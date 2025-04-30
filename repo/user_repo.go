@@ -39,3 +39,46 @@ func GetUserByUsername(username string) (types.User, error) {
 
     return user, nil
 }
+
+func GetUserById(id int) (types.User, error) {
+    conn := db.DB
+
+    var user types.User
+
+    err := conn.QueryRow(`
+    SELECT id, username, role, url_profile_img
+    FROM users
+    WHERE id = $1`, 
+    id).Scan(&user.ID, &user.Username, &user.Role, &user.URLProfileImg)
+    if err != nil {return types.User{}, err}
+
+    return user, nil
+}
+
+func GetUsernameById(id int) (types.User, error) {
+    conn := db.DB
+
+    var user types.User
+
+    err := conn.QueryRow(`
+    SELECT id, username
+    FROM users
+    WHERE id = $1`, 
+    id).Scan(&user.ID, &user.Username)
+    if err != nil {return types.User{}, err}
+
+    return user, nil
+}
+
+func AddProfileImage(id int, profileImage string) (string, error) {
+    conn := db.DB
+
+    err := conn.QueryRow(`
+    UPDATE users
+    SET url_profile_img = $1
+    WHERE id = $2
+    RETURNING id`, profileImage, id).Scan(&id)
+    if err != nil {return "", err}
+
+    return profileImage, nil
+}

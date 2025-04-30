@@ -18,6 +18,9 @@ func main() {
 	
 	mux.HandleFunc("/posts", routes.PostRoute)
 	mux.HandleFunc("/categories", routes.CategoryPublicRoute)
+	mux.HandleFunc("/users", routes.ProfileRoute)
+
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
 	protectedCategoryHandler := m.Auth(m.AdminOnly(http.HandlerFunc(routes.CategoryProtectedRoute)))
 	mux.Handle("/categories/manage", protectedCategoryHandler)

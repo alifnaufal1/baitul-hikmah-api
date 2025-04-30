@@ -1,0 +1,1 @@
+ALTER TABLE posts ADD COLUMN description VARCHAR(50) NULL;

@@ -47,6 +47,14 @@ func PostRoute(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func ProfileRoute(w http.ResponseWriter, r *http.Request)  {
+	if r.Method == "POST" {
+		controller.UploadImage(w, r)
+	} else {
+		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
+	}
+}
+
 func CategoryProtectedRoute(w http.ResponseWriter, r *http.Request)  {
 	switch r.Method {
 	case "GET":

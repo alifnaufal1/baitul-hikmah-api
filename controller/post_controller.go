@@ -6,23 +6,76 @@ import (
 	"blog-api/utils"
 	"database/sql"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 )
 
 func PostCreateController(w http.ResponseWriter, r *http.Request) {
-  var post types.Post
-  if err := utils.DecodeFromRequest(r.Body, &post, w); err != nil {return}
+  userIDCtx := r.Context().Value(types.UserKey)
+  if userIDCtx == nil {
+    utils.HandleAnyError("Unauthorized", w, http.StatusUnauthorized)
+    return
+  }
 
-  createdPost, err := repo.CreatePost(post)
+  userID, ok := userIDCtx.(int)
+  if !ok {
+    utils.HandleAnyError("Invalid user ID", w, http.StatusInternalServerError)
+    return
+  }
+
+  title := r.FormValue("title")
+  content := r.FormValue("content")
+  categoryIDStr := r.FormValue("category_id")
+  description := r.FormValue("description")
+  fmt.Println(len(description))
+  if len(description) > 50 {
+    utils.HandleAnyError("too many description", w, http.StatusBadRequest)
+    return
+  }
+
+  categoryID, err := strconv.Atoi(categoryIDStr)
+  if err != nil {
+    utils.HandleAnyError("invalid category_id", w, http.StatusBadRequest)
+    return
+  }
+
+  post := types.Post{
+    Title:      title,
+    Content:    content,
+    CategoryID: categoryID,
+    Description: description,
+  }
+
+  createdPost, err := repo.CreatePost(post, userID)
   if err != nil {
     if err == sql.ErrNoRows {
       utils.HandleDataNotFound("this category not found", w)
       return
     }
-    utils.HandleAnyError("error saving post -> "+err.Error(), w, http.StatusInternalServerError)
+    utils.HandleAnyError("error saving post -> "+ err.Error(), w, http.StatusInternalServerError)
     return 
   }
+  
+  postData := types.DirName{
+    IdFileName: createdPost.ID,
+    ImageName: createdPost.Title,
+    ImageType: "post",
+  }
+  
+  fileName, err := UploadImageController(w, r, postData)
+  if fileName == "" || err != nil {
+    utils.HandleAnyError("error upload post image -> "+ err.Error(), w, http.StatusInternalServerError)
+    return 
+  }
+  
+  err = repo.UpdatePostImage(createdPost.ID, fileName)
+  if err != nil {
+    utils.HandleAnyError("error saving post image -> "+ err.Error(), w, http.StatusInternalServerError)
+    return 
+  }
+
+  createdPost.PostImg = fileName 
 
   utils.SuccessResponse(w, 201, createdPost, "success create post")
 }

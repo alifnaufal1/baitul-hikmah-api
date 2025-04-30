@@ -5,9 +5,10 @@ import (
 	"blog-api/types"
 	"blog-api/utils"
 	"database/sql"
+	"strconv"
 )
 
-func CreatePost(post types.Post) (types.PostResponse, error) {
+func CreatePost(post types.Post, author int) (types.PostResponse, error) {
 	conn := db.DB
 	var id int
 	var createdAt string
@@ -16,19 +17,26 @@ func CreatePost(post types.Post) (types.PostResponse, error) {
 	if err != nil {
 		return types.PostResponse{}, err
 	}
+	
+	user, err := GetUserById(author)
+	if err != nil {
+		return types.PostResponse{}, err
+	}
 
 	err = conn.QueryRow(`
-	INSERT INTO posts (title, content, category_id) 
-	VALUES ($1, $2, $3) 
+	INSERT INTO posts (title, content, description, category_id, author_id) 
+	VALUES ($1, $2, $3, $4, $5) 
 	RETURNING id, created_at`, 
-	post.Title, post.Content, post.CategoryID).Scan(&id, &createdAt)
+	post.Title, post.Content, post.Description, post.CategoryID, user.ID).Scan(&id, &createdAt)
 	if err != nil {return types.PostResponse{}, err}
 
 	postResponse := types.PostResponse{
 		ID:        id,
 		Title:     post.Title,
 		Content:   post.Content,
+		Description: post.Description,
 		Category:  category.Name,
+		Author:    user.Username,
 		CreatedAt: utils.FromTimestamp(createdAt),
 	}
 
@@ -42,12 +50,12 @@ func GetAllPost(categoryId int) ([]types.PostResponse, error) {
 
 	if categoryId != 0 {
 		rows, err = conn.Query(`
-		SELECT id, title, content, category_id, created_at
+		SELECT id, title, content, description, category_id, author_id, created_at
 		FROM posts 
 		WHERE deleted_at IS NULL AND category_id = $1`, categoryId)
 	} else {
 		rows, err = conn.Query(`
-		SELECT id, title, content, category_id, created_at
+		SELECT id, title, content, url_post_img, description, category_id, author_id, created_at
 		FROM posts 
 		WHERE deleted_at IS NULL`)
 	}
@@ -58,8 +66,12 @@ func GetAllPost(categoryId int) ([]types.PostResponse, error) {
 	var posts []types.PostResponse
 	for rows.Next() {
 		post := types.PostResponse{}
-		err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.Category, &post.CreatedAt)
+		err := rows.Scan(&post.ID, &post.Title, &post.Content, &post.PostImg, &post.Description, &post.Category, &post.Author, &post.CreatedAt)
 		if err != nil {return []types.PostResponse{}, err}
+		authorId, _ := strconv.Atoi(post.Author)
+		user, _ := GetUserById(authorId)
+		post.Author = user.Username
+		post.AuthorImg = user.URLProfileImg
 		post.CreatedAt = utils.FromTimestamp(post.CreatedAt)
 		posts = append(posts, post)  
 	}
@@ -74,13 +86,16 @@ func GetPostById(id int) (types.PostResponse, error) {
 
 	var post types.Post
 	err := conn.QueryRow(`
-	SELECT id, title, content, category_id, created_at 
+	SELECT id, title, content, category_id, author_id, created_at 
 	FROM posts 
 	WHERE id = $1 AND deleted_at IS NULL`,
-	id).Scan(&post.ID, &post.Title, &post.Content, &post.CategoryID, &post.CreatedAt)
+	id).Scan(&post.ID, &post.Title, &post.Content, &post.CategoryID, &post.AuthorID, &post.CreatedAt)
 	if err != nil {return types.PostResponse{}, err}
 	
 	category, err := GetCategoryById(post.CategoryID)
+	if err != nil {return types.PostResponse{}, err}
+
+	user, err := GetUserById(post.AuthorID)
 	if err != nil {return types.PostResponse{}, err}
 
 	postResponse := types.PostResponse{
@@ -88,6 +103,7 @@ func GetPostById(id int) (types.PostResponse, error) {
 		Title: post.Title,
 		Content: post.Content,
 		Category: category.Name,
+		Author: user.Username,
 		CreatedAt: utils.FromTimestamp(post.CreatedAt),
 	}
 
@@ -129,6 +145,20 @@ func DeletePost(id int) error {
 	SET deleted_at = NOW() 
 	WHERE id = $1 AND deleted_at IS NULL
 	RETURNING id`, id).Scan(&id)
+	if err != nil {return err}
+
+	return nil
+}
+
+func UpdatePostImage(id int, URLPostImg string) error {
+	conn := db.DB
+
+	err := conn.QueryRow(`
+	UPDATE posts
+	SET url_post_img = $1
+	WHERE id = $2 AND deleted_at IS NULL
+	RETURNING id`, 
+	URLPostImg, id).Scan(&id)
 	if err != nil {return err}
 
 	return nil

@@ -1,11 +1,13 @@
 package middleware
 
 import (
+	"blog-api/types"
 	"blog-api/utils"
 	"context"
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,10 +18,6 @@ type CustomMux struct {
 	http.ServeMux
 	middlewares []func(next http.Handler) http.Handler
 }
-
-type contextKey string
-
-const RoleKey contextKey = "role"
 
 var SECRET_KEY = []byte("my_scret_key")
 
@@ -52,47 +50,65 @@ func GenerateToken(userId int, role string) (string, error) {
 
 func Auth(next http.Handler) http.Handler {
   return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	excludedRoutes := []string{"/", "/register", "/login"}
-	for _, route := range excludedRoutes {
-		if r.URL.Path == route {
+		if strings.HasPrefix(r.URL.Path, "/uploads/") {
 			next.ServeHTTP(w, r)
 			return
 		}
-	}
 
-	authHeader := r.Header.Get("Authorization") 
-	if authHeader == "" {
-		utils.HandleAnyError("no token provided", w, 401)
-		return
-	}
-
-	tokenString := strings.Split(authHeader, " ")
-	if len(tokenString) != 2 || tokenString[0] != "Bearer" {
-		utils.HandleAnyError("invalid token format", w, 401)
-		return
-	}
-
-	claims := jwt.MapClaims{}
-	token, err := jwt.ParseWithClaims(tokenString[1], claims, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		excludedRoutes := []string{"/", "/register", "/login"}
+		for _, route := range excludedRoutes {
+			if r.URL.Path == route {
+				next.ServeHTTP(w, r)
+				return
+			}
 		}
-		return SECRET_KEY, nil
-	})
 
-	if err != nil || !token.Valid {
-		if errors.Is(err, jwt.ErrTokenExpired) {
-			utils.HandleAnyError("expired token", w, 401)
+		authHeader := r.Header.Get("Authorization") 
+		if authHeader == "" {
+			utils.HandleAnyError("no token provided", w, 401)
 			return
 		}
-		utils.HandleAnyError("invalid token", w, 401)
-		return
-	}
-	
-	role := claims["role"].(string)
-	ctx := context.WithValue(r.Context(), RoleKey, role)
-	
-    next.ServeHTTP(w, r.WithContext(ctx))
+
+		tokenString := strings.Split(authHeader, " ")
+		if len(tokenString) != 2 || tokenString[0] != "Bearer" {
+			utils.HandleAnyError("invalid token format", w, 401)
+			return
+		}
+
+		claims := jwt.MapClaims{}
+		token, err := jwt.ParseWithClaims(tokenString[1], claims, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+			}
+			return SECRET_KEY, nil
+		})
+
+		if err != nil || !token.Valid {
+			if errors.Is(err, jwt.ErrTokenExpired) {
+				utils.HandleAnyError("expired token", w, 401)
+				return
+			}
+			utils.HandleAnyError("invalid token", w, 401)
+			return
+		}
+		
+		role, _ := claims["role"].(string)
+
+		var userID int
+		switch v := claims["user_id"].(type) {
+		case float64:
+			userID = int(v)
+		case string:
+			id, err := strconv.Atoi(v)
+			if err == nil {
+				userID = id
+			}
+		}
+
+		ctx := context.WithValue(r.Context(), types.RoleKey, role)
+		ctx = context.WithValue(ctx, types.UserKey, userID)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
   })
 }
 
@@ -113,7 +129,7 @@ func CorsMiddleware(next http.Handler) http.Handler {
 
 func AdminOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func (w http.ResponseWriter, r *http.Request)  {
-		role, ok := r.Context().Value(RoleKey).(string)
+		role, ok := r.Context().Value(types.RoleKey).(string)
 		if !ok || role != "admin" {
 			utils.HandleAnyError("access denied, admin only", w, 403)
 			return
