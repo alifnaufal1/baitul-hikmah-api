@@ -72,7 +72,9 @@ func GetAllPost(categoryId int) ([]types.PostResponse, error) {
 		user, _ := GetUserById(authorId)
 		post.Author = user.Username
 		post.AuthorImg = user.URLProfileImg
-		post.CreatedAt = utils.FromTimestamp(post.CreatedAt)
+		timeDiff := utils.GetHumanReadableTimeDiff(post.CreatedAt)
+		if timeDiff == "invalid date" {return []types.PostResponse{}, err}
+		post.CreatedAt = timeDiff
 		posts = append(posts, post)  
 	}
 	
