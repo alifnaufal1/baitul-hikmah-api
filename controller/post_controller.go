@@ -6,9 +6,9 @@ import (
 	"blog-api/utils"
 	"database/sql"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func PostCreateController(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +28,6 @@ func PostCreateController(w http.ResponseWriter, r *http.Request) {
   content := r.FormValue("content")
   categoryIDStr := r.FormValue("category_id")
   description := r.FormValue("description")
-  fmt.Println(len(description))
   if len(description) > 50 {
     utils.HandleAnyError("too many description", w, http.StatusBadRequest)
     return
@@ -81,12 +80,14 @@ func PostCreateController(w http.ResponseWriter, r *http.Request) {
 }
 
 func PostGetController(w http.ResponseWriter, r *http.Request)  {
-  strId := r.URL.Query().Get("id")
   strCategoryId := r.URL.Query().Get("category_id")
+  categoryId, _ := strconv.Atoi(strCategoryId)
+  arrayPath := strings.Split(r.URL.Path, "/")
 
-  if strId != "" {
-    id, _ := strconv.Atoi(strId)
-    post, err := repo.GetPostById(id)
+  if len(arrayPath) == 3 {
+    strID := arrayPath[2]
+    postId, _ := strconv.Atoi(strID)
+    post, err := repo.GetPostById(postId)
     if err != nil {
       if err == sql.ErrNoRows {
         utils.HandleDataNotFound("this post not found", w)
@@ -95,21 +96,19 @@ func PostGetController(w http.ResponseWriter, r *http.Request)  {
       utils.HandleAnyError("error get post -> " + err.Error(), w, http.StatusInternalServerError)
       return
     }
-
     utils.SuccessResponse(w, 200, post, "success fetch post")
-  } else {
-      categoryId, _ := strconv.Atoi(strCategoryId)
-      posts, err := repo.GetAllPost(categoryId)
-      if err != nil {
-        if err == sql.ErrNoRows {
-          utils.HandleAnyError("posts not found", w, http.StatusNotFound)
-          return
-        }
+  } else { 
+    posts, err := repo.GetAllPost(categoryId)
+    if err != nil {
+      if err == sql.ErrNoRows {
+        utils.HandleAnyError("posts not found", w, http.StatusNotFound)
+        return
+      }
       utils.HandleAnyError("error get all post ->" + err.Error(), w, http.StatusInternalServerError)
       return
     }
     utils.SuccessResponse(w, 200, posts, "success fetch all post")
-  }  
+  }
 }
 
 func PostUpdateController(w http.ResponseWriter, r *http.Request)  {

@@ -20,7 +20,7 @@ func CreateUser(username string, hashPassword string) (types.RegisterResponse, e
     registerResponse := types.RegisterResponse{
         ID: id,
         Username: username,
-        RegisterAT: utils.FromTimestamp(createdAt),
+        RegisterAT: utils.GetDate(createdAt),
     }
 
     return registerResponse, nil

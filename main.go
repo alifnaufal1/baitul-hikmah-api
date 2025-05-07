@@ -17,6 +17,7 @@ func main() {
 	mux.HandleFunc("/login", routes.LoginHandler)
 	
 	mux.HandleFunc("/posts", routes.PostRoute)
+	mux.HandleFunc("/posts/", routes.PostRoute)
 	mux.HandleFunc("/categories", routes.CategoryPublicRoute)
 	mux.HandleFunc("/users", routes.ProfileRoute)
 
