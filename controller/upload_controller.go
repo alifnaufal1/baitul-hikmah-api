@@ -4,6 +4,7 @@ import (
 	"blog-api/repo"
 	"blog-api/types"
 	"blog-api/utils"
+	"errors"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -11,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/disintegration/imaging"
@@ -42,13 +44,9 @@ func getProfileImageName(w http.ResponseWriter, r *http.Request, uploadedFilenam
 
 func getPostImageName(postID int, postTitle string, ext string) (string) {
 	postTitle = strings.ToLower(postTitle)
-	runes := []rune(postTitle)
-	for i, r := range runes {
-		if r == ' ' {
-			runes[i] = '_'
-		}
-	}
-	postTitle = string(runes)
+	reg, _ := regexp.Compile(`[^a-z0-9\s]+`)
+	postTitle = reg.ReplaceAllString(postTitle, "")
+	postTitle = strings.ReplaceAll(postTitle, "", "_")
 	return fmt.Sprintf("%d-%s%s", postID, postTitle, ext)	
 }
 
@@ -57,6 +55,7 @@ func UploadImageController(w http.ResponseWriter, r *http.Request, dstDir types.
 	if err != nil {return "", err}
 	
 	file, header, err := r.FormFile(dstDir.ImageType + "-image")
+	if file == nil {return "", errors.New("file is required")}
 	if err != nil {return "", err}
 	defer file.Close()
 
@@ -93,7 +92,7 @@ func UploadImageController(w http.ResponseWriter, r *http.Request, dstDir types.
 	case ".png":
 		err = png.Encode(targetFile, resizedImg)
 	default:
-		return "", fmt.Errorf("unsupported image format")
+		return "", errors.New("unsupported image format")
 	}
 	if err != nil {return "", err}	
 
