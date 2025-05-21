@@ -4,6 +4,7 @@ import (
 	"blog-api/db"
 	"blog-api/types"
 	"blog-api/utils"
+	"database/sql"
 )
 
 func CreateUser(username string, hashPassword string) (types.RegisterResponse, error) {
@@ -59,7 +60,7 @@ func GetUsernameById(id int) (types.User, error) {
     conn := db.DB
 
     var user types.User
-
+    
     err := conn.QueryRow(`
     SELECT id, username
     FROM users
@@ -68,6 +69,29 @@ func GetUsernameById(id int) (types.User, error) {
     if err != nil {return types.User{}, err}
 
     return user, nil
+}
+
+func UpdateUser(user types.UserUpdateRequest) (types.UserUpdateResponse, error) {
+    conn := db.DB
+
+    var updatedUser types.UserUpdateResponse
+
+    err := conn.QueryRow(`
+    UPDATE users
+    SET 
+    username = $1, 
+    password = $2
+    WHERE id = $3
+    RETURNING id, updated_at`,
+    user.Username, user.Password, user.ID).Scan(&user.ID, &updatedUser.UpdatedAt)
+    if err != nil { return types.UserUpdateResponse{}, err }
+
+    updatedUser = types.UserUpdateResponse{
+        ID: user.ID,
+        Username: user.Username,
+        UpdatedAt: utils.GetDateHour(updatedUser.UpdatedAt),
+    }
+    return updatedUser, nil
 }
 
 func AddProfileImage(id int, profileImage string) (string, error) {
@@ -79,6 +103,33 @@ func AddProfileImage(id int, profileImage string) (string, error) {
     WHERE id = $2
     RETURNING id`, profileImage, id).Scan(&id)
     if err != nil {return "", err}
-
+    
     return profileImage, nil
+}
+
+func AddBlacklistToken(token string, id int) (error) {
+    conn := db.DB
+
+    err := conn.QueryRow(`
+    INSERT INTO blacklist_tokens (token, user_id)
+    VALUES ($1, $2)
+    `, token, id).Err()
+    if err != nil { return err }
+
+    return nil
+}
+
+func IsBlacklistToken(token string, id int) (bool) {
+    conn := db.DB
+
+    var blacklistTokens string
+
+    err := conn.QueryRow(`
+    SELECT token, user_id
+    FROM blacklist_tokens
+    WHERE token=$1 AND user_id=$2
+    `, token, id).Scan(blacklistTokens)
+    
+    return err != sql.ErrNoRows
+
 }

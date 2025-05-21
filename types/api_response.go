@@ -16,3 +16,11 @@ type LoginResult struct {
 	Message string      `json:"message"`
 	Token   interface{} `json:"token"`
 }
+
+type LogoutResult struct {
+	Message string `json:"message"`
+}
+
+type ValidTokenResult struct {
+	Message string `json:"message"`
+}

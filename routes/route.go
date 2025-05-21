@@ -32,6 +32,35 @@ func LoginHandler(w http.ResponseWriter, r *http.Request)  {
 	}
 }
 
+func LogoutHandler(w http.ResponseWriter, r *http.Request)  {
+	switch r.Method {
+	case "GET":
+		controller.UserLogoutController(w, r)
+	default:
+		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
+	}
+}
+
+func ProfileRoute(w http.ResponseWriter, r *http.Request)  {
+	switch r.Method {
+	case "POST":
+		controller.UploadImage(w, r)
+	case "PUT":
+		controller.UserUpdateController(w, r)
+	default:
+		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
+	}
+}
+
+func ProtectedRouteHandler(w http.ResponseWriter, r *http.Request)  {
+	switch r.Method {
+	case "GET":
+		controller.RequestController(w, r)
+	default:
+		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
+	}
+}
+
 func PostRoute(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
@@ -47,13 +76,6 @@ func PostRoute(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ProfileRoute(w http.ResponseWriter, r *http.Request)  {
-	if r.Method == "POST" {
-		controller.UploadImage(w, r)
-	} else {
-		utils.HandleAnyError("invalid request method", w, http.StatusBadRequest)
-	}
-}
 
 func CategoryProtectedRoute(w http.ResponseWriter, r *http.Request)  {
 	switch r.Method {

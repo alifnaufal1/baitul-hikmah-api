@@ -99,18 +99,16 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 
 	userIDCtx := r.Context().Value(types.UserKey)
   if userIDCtx == nil {
-    utils.HandleAnyError("Unauthorized", w, http.StatusUnauthorized)
+		utils.HandleAnyError("Unauthorized", w, http.StatusUnauthorized)
     return
   }
-
+	
   userID, ok := userIDCtx.(int)
   if !ok {
 		utils.HandleAnyError("Invalid user ID", w, http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Println("user_id from context:", userID)
-	
 	registeredUser, err := repo.GetUsernameById(userID)
 	if err != nil {
 		utils.HandleDataNotFound("Cannot fetch user", w)
@@ -120,7 +118,7 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 	fileName := fmt.Sprintf("%d-%s%s", userID, registeredUser.Username, filepath.Ext(headerFile.Filename))
 	
 	fileLocation := filepath.Join(dir, "uploads/profile", fileName)
-
+	
 	_, err = repo.AddProfileImage(userID, "http://localhost:90/uploads/profile/" + fileName)
 	if err != nil {
 		utils.HandleAnyError("cannot save profile image to db -> " + err.Error(), w, http.StatusInternalServerError)
@@ -140,7 +138,7 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 		utils.HandleAnyError("cannot copy profile image -> " + err.Error(), w, http.StatusInternalServerError)
 		return
 	}
-
+	
 	uploadResponse := types.APIResponse{
 		Code: 200,
 		Results: "success",
@@ -148,4 +146,107 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	utils.JSONTemplate(w, 200, uploadResponse)
+}
+
+func UserUpdateController(w http.ResponseWriter, r *http.Request) {
+	password := r.FormValue("password") 
+	if len(password) > 8 {
+		utils.HandleAnyError("password is too long", w, http.StatusBadRequest)
+		return
+	}
+
+	file, _, _ := r.FormFile("profile-image")
+  if file == nil {
+    utils.HandleAnyError("file is required", w, http.StatusBadRequest)
+    return 
+  }
+  defer file.Close()
+	
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 8)
+	if err != nil{
+		utils.HandleAnyError("error hashing password -> " + err.Error(), w, http.StatusInternalServerError)
+		return
+	}
+
+	userId, err := utils.GetUserId(r)
+	if err != nil || userId == 0 {
+		utils.HandleAnyError(err.Error(), w, http.StatusUnauthorized)
+		return
+	}
+	
+	user := types.UserUpdateRequest{
+		ID: userId,
+		Username: r.FormValue("username"),
+		Password: string(hashedPassword),
+	}
+	
+	updatedUser, err := repo.UpdateUser(user)
+	if err != nil {
+		utils.HandleAnyError("error update user -> " + err.Error(), w, http.StatusInternalServerError)
+		return
+	}
+
+	postData := types.DirName{
+		IdFileName: userId,
+		ImageName: updatedUser.Username,
+		ImageType: "profile",
+	}
+
+	fileName, err := UploadImageController(w, r, postData)
+	if fileName == "" || err != nil {
+		utils.HandleAnyError("error upload profile image -> " + err.Error(), w, http.StatusInternalServerError)
+    return 
+	}
+	
+	_, err = repo.AddProfileImage(updatedUser.ID, fileName)
+	if err != nil {
+		utils.HandleAnyError("error upload post image -> " + err.Error(), w, http.StatusInternalServerError)
+		return 
+	}
+
+	updatedUser.URLProfileImg = fileName
+
+  utils.SuccessResponse(w, 200, updatedUser, "success update profile")
+}
+
+func UserLogoutController(w http.ResponseWriter, r *http.Request)  {
+	userIDCtx := r.Context().Value(types.UserKey)
+  if userIDCtx == nil {
+    utils.HandleAnyError("Unauthorized", w, http.StatusUnauthorized)
+    return
+  }
+	
+	tokenCtx := r.Context().Value(types.TokenKey)
+	if tokenCtx == nil {
+		utils.HandleAnyError("Unauthorized", w, http.StatusUnauthorized)
+		return
+	}
+
+  userID, ok := userIDCtx.(int)
+  if !ok {
+		utils.HandleAnyError("Invalid user ID", w, http.StatusInternalServerError)
+		return
+	}
+	
+	token, ok := tokenCtx.(string)
+	if !ok {
+		utils.HandleAnyError("invalid token", w, http.StatusBadRequest)
+		return
+	} 
+		
+	err := repo.AddBlacklistToken(token, userID)
+	if err != nil {
+		utils.HandleAnyError("invalid token", w, http.StatusBadRequest)
+		return	
+	}
+	
+	logoutResponse := types.APIResponse{
+		Code: 200,
+		Results: types.LogoutResult{
+			Message: "success logout",
+		},
+		Status: "success",
+	}
+	
+	utils.JSONTemplate(w, 200, logoutResponse)
 }

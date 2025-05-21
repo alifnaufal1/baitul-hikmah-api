@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"blog-api/repo"
 	"blog-api/types"
 	"blog-api/utils"
 	"context"
@@ -55,26 +56,26 @@ func Auth(next http.Handler) http.Handler {
 			return
 		}
 
-		excludedRoutes := []string{"/", "/register", "/login"}
+		excludedRoutes := []string{"/", "/register", "/login", "/request"}
 		for _, route := range excludedRoutes {
 			if r.URL.Path == route {
 				next.ServeHTTP(w, r)
 				return
 			}
 		}
-
+		
 		authHeader := r.Header.Get("Authorization") 
 		if authHeader == "" {
 			utils.HandleAnyError("no token provided", w, 401)
 			return
 		}
-
+		
 		tokenString := strings.Split(authHeader, " ")
 		if len(tokenString) != 2 || tokenString[0] != "Bearer" {
 			utils.HandleAnyError("invalid token format", w, 401)
 			return
 		}
-
+		
 		claims := jwt.MapClaims{}
 		token, err := jwt.ParseWithClaims(tokenString[1], claims, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -104,9 +105,15 @@ func Auth(next http.Handler) http.Handler {
 				userID = id
 			}
 		}
+		
+		if repo.IsBlacklistToken(token.Raw, userID) {
+			utils.HandleAnyError("expired token", w, 401)
+			return
+		}
 
 		ctx := context.WithValue(r.Context(), types.RoleKey, role)
 		ctx = context.WithValue(ctx, types.UserKey, userID)
+		ctx = context.WithValue(ctx, types.TokenKey, token.Raw)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
   })

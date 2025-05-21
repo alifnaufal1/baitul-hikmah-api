@@ -10,6 +10,11 @@ func GetDate(dateString string) string {
 	return parsedTime.Format("02-01-2006")
 }
 
+func GetDateHour(dateString string) string {
+	parsedTime, _ := time.Parse(time.RFC3339, dateString)
+	return parsedTime.Format("02-01-2006 15:04:05")
+}
+
 func GetHumanReadableTimeDiff(dateString string) string {
 	parsedTime, err := time.Parse(time.RFC3339, dateString)
 	if err != nil { return "invalid date"}
