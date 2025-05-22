@@ -12,66 +12,19 @@ import (
 )
 
 func PostCreateController(w http.ResponseWriter, r *http.Request) {
-  title := r.FormValue("title")
-  if title == "" {
-    utils.HandleAnyError("title field required", w, http.StatusBadRequest)
-    return
-  }
-
-  content := r.FormValue("content")
-  if content == "" {
-    utils.HandleAnyError("content field required", w, http.StatusBadRequest)
-    return
-  }
-
-  categoryIDStr := r.FormValue("category_id")
-  if categoryIDStr == "" {
-    utils.HandleAnyError("category field required", w, http.StatusBadRequest)
-    return
-  }
-  categoryID, err := strconv.Atoi(categoryIDStr)
+  requestedPost, err := utils.CheckPost(r)
   if err != nil {
-    utils.HandleAnyError("invalid category_id", w, http.StatusBadRequest)
+    utils.HandleAnyError(err.Error(), w, http.StatusBadRequest)
     return
   }
 
-  description := r.FormValue("description")
-  if description == "" {
-    utils.HandleAnyError("description field required", w, http.StatusBadRequest)
-    return
-  }
-  if len(description) > 50 {
-    utils.HandleAnyError("too many description", w, http.StatusBadRequest)
-    return
-  }
-  
-  file, _, _ := r.FormFile("post-image")
-  if file == nil {
-    utils.HandleAnyError("file is required", w, http.StatusBadRequest)
-    return 
-  }
-  defer file.Close()
+  userID, err := utils.GetRegisteredUserId(r)
+  if err != nil || userID == 0 {
+		utils.HandleAnyError(err.Error(), w, http.StatusUnauthorized)
+		return
+	}
 
-  userIDCtx := r.Context().Value(types.UserKey)
-  if userIDCtx == nil {
-    utils.HandleAnyError("Unauthorized", w, http.StatusUnauthorized)
-    return
-  }
-
-  userID, ok := userIDCtx.(int)
-  if !ok {
-    utils.HandleAnyError("Invalid user ID", w, http.StatusInternalServerError)
-    return
-  }
-
-  post := types.Post{
-    Title:      title,
-    Content:    content,
-    CategoryID: categoryID,
-    Description: description,
-  }
-
-  createdPost, err := repo.CreatePost(post, userID)
+  createdPost, err := repo.CreatePost(requestedPost, userID)
   if err != nil {
     if err == sql.ErrNoRows {
       utils.HandleDataNotFound("this category not found", w)
@@ -137,28 +90,16 @@ func PostGetController(w http.ResponseWriter, r *http.Request)  {
 }
 
 func PostUpdateController(w http.ResponseWriter, r *http.Request)  {
-  var post types.Post
-  if err := utils.DecodeFromRequest(r.Body, &post, w); err != nil {return}
+  strPostID := strings.Split(r.URL.Path, "/")[2]
+  postID, _ := strconv.Atoi(strPostID)
 
-  strId := r.URL.Query().Get("id")
-  if strId == "" {
-    utils.HandleAnyError("missing parameter", w, http.StatusBadRequest)
+  requestedPost, err := utils.CheckPost(r)
+  if err != nil {
+    utils.HandleAnyError(err.Error(), w, http.StatusBadRequest)
     return
   }
 
-  id, _ := strconv.Atoi(strId)
-
-  if post.Title == "" {
-    utils.HandleAnyError("post title is required", w, http.StatusBadRequest)
-    return  
-  }
-
-  if post.Content == "" {
-    utils.HandleAnyError("post content is required", w, http.StatusBadRequest)
-    return  
-  }
-
-  updatedPost, err := repo.UpdatePost(id, post)
+  updatedPost, err := repo.UpdatePost(postID, requestedPost)
   if err != nil {
     if errors.Is(err, sql.ErrNoRows) {
       utils.HandleDataNotFound("this post not found", w)
@@ -172,7 +113,27 @@ func PostUpdateController(w http.ResponseWriter, r *http.Request)  {
     return  
   }
 
-  utils.SuccessResponse(w, 201, updatedPost, "success update post")
+  postData := types.DirName{
+    IdFileName: postID,
+    ImageName: updatedPost.Title,
+    ImageType: "post",
+  }
+
+  fileName, err := UploadImageController(w, r, postData)
+  if fileName == "" || err != nil {
+    utils.HandleAnyError("error upload post image: " + err.Error(), w, http.StatusBadRequest)
+    return
+  }
+
+  err = repo.UpdatePostImage(postID, fileName)
+  if err != nil {
+    utils.HandleAnyError("error saving post image -> "+ err.Error(), w, http.StatusInternalServerError)
+    return 
+  }
+
+  updatedPost.PostImg = fileName
+
+  utils.SuccessResponse(w, 200, updatedPost, "success update post")
 }
 
 func PostDeleteController(w http.ResponseWriter, r *http.Request)  {

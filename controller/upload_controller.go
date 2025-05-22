@@ -45,8 +45,10 @@ func getProfileImageName(w http.ResponseWriter, r *http.Request, uploadedFilenam
 func getPostImageName(postID int, postTitle string, ext string) (string) {
 	postTitle = strings.ToLower(postTitle)
 	reg, _ := regexp.Compile(`[^a-z0-9\s]+`)
-	postTitle = reg.ReplaceAllString(postTitle, "")
-	postTitle = strings.ReplaceAll(postTitle, "", "_")
+	postTitle = reg.ReplaceAllString(postTitle, " ")
+	if strings.Contains(postTitle, " ") {
+		postTitle = strings.ReplaceAll(postTitle, " ", "_")
+	}
 	return fmt.Sprintf("%d-%s%s", postID, postTitle, ext)	
 }
 
@@ -92,7 +94,7 @@ func UploadImageController(w http.ResponseWriter, r *http.Request, dstDir types.
 	case ".png":
 		err = png.Encode(targetFile, resizedImg)
 	default:
-		return "", errors.New("unsupported image format")
+		return "", errors.New("unsupported image format (only receive .jpg, .jpeg, & .png)")
 	}
 	if err != nil {return "", err}	
 

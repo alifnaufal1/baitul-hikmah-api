@@ -46,3 +46,14 @@ type PostCreateResponse struct {
 	AuthorImg   string `json:"author_img"`
 	CreatedAt   string `json:"created_at"`
 }
+
+type PostUpdateResponse struct {
+	ID          int    `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Content     string `json:"content"`
+	PostImg     string `json:"post_img"`
+	Category    string `json:"category"`
+	Author      string `json:"author"`
+	UpdatedAt   string `json:"updated_at"`
+}

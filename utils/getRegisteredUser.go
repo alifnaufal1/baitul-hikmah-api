@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func GetUserId(r *http.Request) (int, error) {
+func GetRegisteredUserId(r *http.Request) (int, error) {
 	userIDCtx := r.Context().Value(types.UserKey)
   if userIDCtx == nil { return 0, errors.New("unauthorized") }
 	

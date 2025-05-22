@@ -149,7 +149,17 @@ func UploadImage(w http.ResponseWriter, r *http.Request) {
 }
 
 func UserUpdateController(w http.ResponseWriter, r *http.Request) {
+	username := r.FormValue("username")
+	if username == "" {
+		utils.HandleAnyError("username field is required", w, http.StatusBadRequest)
+		return 
+	}
+	
 	password := r.FormValue("password") 
+	if password == "" {
+		utils.HandleAnyError("password field is required", w, http.StatusBadRequest)
+		return 
+	}
 	if len(password) > 8 {
 		utils.HandleAnyError("password is too long", w, http.StatusBadRequest)
 		return
@@ -168,7 +178,7 @@ func UserUpdateController(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userId, err := utils.GetUserId(r)
+	userId, err := utils.GetRegisteredUserId(r)
 	if err != nil || userId == 0 {
 		utils.HandleAnyError(err.Error(), w, http.StatusUnauthorized)
 		return
@@ -176,7 +186,7 @@ func UserUpdateController(w http.ResponseWriter, r *http.Request) {
 	
 	user := types.UserUpdateRequest{
 		ID: userId,
-		Username: r.FormValue("username"),
+		Username: username,
 		Password: string(hashedPassword),
 	}
 	

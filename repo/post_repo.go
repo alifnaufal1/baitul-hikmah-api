@@ -114,29 +114,34 @@ func GetPostById(id int) (types.PostDetailResponse, error) {
 	return postResponse, nil
 }
 
-func UpdatePost(id int, post types.Post) (types.PostCreateResponse, error) {
+func UpdatePost(id int, post types.Post) (types.PostUpdateResponse, error) {
 	conn := db.DB
 	
 	category, err := GetCategoryById(post.CategoryID)
-	if err != nil {return types.PostCreateResponse{}, utils.ErrCategoryNotFound}
+	if err != nil {return types.PostUpdateResponse{}, utils.ErrCategoryNotFound}
 
 	err = conn.QueryRow(`
 	UPDATE posts
 	SET
 	title = $1,
 	content = $2,
-	category_id = $3
-	WHERE id = $4 AND deleted_at IS NULL
-	RETURNING id `, 
-	post.Title, post.Content, post.CategoryID, id).Scan(&id)
-	if err != nil {return types.PostCreateResponse{}, err}
+	category_id = $3,
+	description = $4
+	WHERE id = $5 AND deleted_at IS NULL
+	RETURNING id, updated_at, author_id`, 
+	post.Title, post.Content, post.CategoryID, post.Description,id).Scan(&id, &post.UpdatedAt, &post.AuthorID)
+	if err != nil {return types.PostUpdateResponse{}, err}
 
-	postResponse := types.PostCreateResponse{
+	author, _ := GetUserById(post.AuthorID)
+
+	postResponse := types.PostUpdateResponse{
 		ID: id,
 		Title: post.Title,
 		Content: post.Content,
 		Category: category.Name,
-		CreatedAt: utils.GetDate(post.CreatedAt),
+		Description: post.Description,
+		UpdatedAt: utils.GetDate(post.UpdatedAt),
+		Author: author.Username,
 	}
 	return postResponse, nil
 }
